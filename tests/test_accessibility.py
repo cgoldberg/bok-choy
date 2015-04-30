@@ -8,7 +8,6 @@ from textwrap import dedent
 from bok_choy.web_app_test import WebAppTest
 from .pages import VisiblePage
 
-AXS_URL = "https://raw.githubusercontent.com/GoogleChrome/accessibility-developer-tools/stable/dist/js/axs_testing.js"
 AXS_FILE = 'tests/axs_testing.js'
 
 class AccessibilityTest(WebAppTest):
@@ -22,7 +21,6 @@ class AccessibilityTest(WebAppTest):
     def test_phantom_execute(self):
         # Get the session_id from ghostdriver so that we can inject JS into the page
         # The ghostdriver URL will be something like this: 'http://localhost:33225/wd/hub'
-        self.assertTrue(self.page.is_visible('superman'))
         ghostdriver_url = self.browser.service.service_url
         resp = requests.get('{}/sessions'.format(ghostdriver_url))
         sessions = resp.json()
@@ -50,3 +48,5 @@ class AccessibilityTest(WebAppTest):
         resp = requests.post('{}/session/{}/phantom/execute'.format(ghostdriver_url, session_id), data=json.dumps(payload))
         report = resp.json().get('value')
 
+        for rule in report:
+            self.assertTrue(rule.get('result') in ['PASS', 'NA'])
