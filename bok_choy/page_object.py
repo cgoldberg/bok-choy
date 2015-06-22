@@ -599,6 +599,23 @@ class PageObject(object):
         for session in sessions.get('value'):
             session_id = session.get('id')
 
+            # First make sure you can successfully inject the JS on the page
+            script = dedent("""
+                return this.injectJs("{file}");
+            """.format(file=AXS_FILE))
+
+            payload = {"script": script, "args": []}
+            resp = requests.post('{}/session/{}/phantom/execute'.format(
+                ghostdriver_url, session_id), data=json.dumps(payload))
+
+            result = resp.json().get('value')
+            if result is False:
+                msg = '{msg} \nScript:{script} \nResponse:{response}'.format(
+                    msg='Failure injecting the Accessibility Audit JS on the page.',
+                    script=script,
+                    response=resp.text)
+                raise RuntimeError(msg)
+
             # This line will only be included in the script if rules to check on this page
             # are specified, as the default behavior of the js is to run all rules.
             if len(rules) > 0:
@@ -616,9 +633,7 @@ class PageObject(object):
                 )
 
             script = dedent("""
-                var page = this;
-                page.injectJs("{file}");
-                var report = page.evaluate(function() {{
+                return this.evaluate(function() {{
                   var auditConfig = new axs.AuditConfiguration();
                   {rules_config}
                   auditConfig.scope = {scope};
@@ -626,8 +641,7 @@ class PageObject(object):
                   var audit_results = axs.Audit.auditResults(run_results)
                   return audit_results;
                 }});
-                return report;
-            """.format(file=AXS_FILE, rules_config=rules_config, scope=self.axs_scope()))
+            """.format(rules_config=rules_config, scope=self.axs_scope()))
 
             payload = {"script": script, "args": []}
             resp = requests.post('{}/session/{}/phantom/execute'.format(
